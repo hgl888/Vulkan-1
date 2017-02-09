@@ -43,6 +43,8 @@ print("Copying project assets")
 
 copy("../../VKTS_Binaries/shader/SPIR/V/font.vert.spv", "./assets/shader/SPIR/V/")
 copy("../../VKTS_Binaries/shader/SPIR/V/font.frag.spv", "./assets/shader/SPIR/V/")
+copy("../../VKTS_Binaries/shader/SPIR/V/font_df.vert.spv", "./assets/shader/SPIR/V/")
+copy("../../VKTS_Binaries/shader/SPIR/V/font_df.frag.spv", "./assets/shader/SPIR/V/")
 
 copy("../../VKTS_Binaries/shader/SPIR/V/bsdf.vert.spv", "./assets/shader/SPIR/V/")
 copy("../../VKTS_Binaries/shader/SPIR/V/bsdf_no_texcoord.vert.spv", "./assets/shader/SPIR/V/")
@@ -64,7 +66,7 @@ copy("../../VKTS_Binaries/material_probes/*.tga", "./assets/material_probes/")
 
 copy("../../VKTS_Binaries/primitives/*.vkts", "./assets/primitives/")
 
-copy("../../VKTS_Binaries/texture/BSDF_LUT_512_8.data", "./assets/texture/")
+copy("../../VKTS_Binaries/texture/BSDF_LUT_512_256.data", "./assets/texture/")
 
 copy("../../VKTS_Binaries/cache/material_probes/*.tga", "./assets/cache/material_probes/")
 
@@ -72,7 +74,7 @@ print("Building project")
 
 os.chdir("jni")
 
-subprocess.call("ndk-build", shell=True)
+subprocess.call("ndk-build -j", shell=True)
 
 os.chdir("..")
 

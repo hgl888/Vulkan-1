@@ -31,12 +31,20 @@
 
 #define VKTS_EXAMPLE_NAME "Example10"
 
+#define VKTS_NUMBER_DYNAMIC_UNIFORM_BUFFERS 3
+#define VKTS_MAX_NUMBER_BUFFERS 3
+
 #define VKTS_NUMBER_BUFFERS 2
 
 #define VKTS_BINDING_VERTEX_BUFFER 0
 
-#define VKTS_FONT_NAME "font/Arial_128.fnt"
-#define VKTS_FONT_SCALE 32.0f
+#define VKTS_MAX_LIGHTS 16
+
+#define VKTS_FONT_DISTANCE_FIELD VK_TRUE
+#define VKTS_FONT_NAME "font/Arial_32.fnt"
+#define VKTS_FONT_DF_NAME "font/Arial_32_DF.fnt"
+#define VKTS_FONT_SIZE 16.0f
+#define VKTS_FONT_COLOR glm::vec4(1.0f, 1.0f, 1.0f, 1.0f)
 
 
 #define VKTS_BSDF0_VERTEX_SHADER_NAME "shader/SPIR/V/bsdf.vert.spv"
@@ -53,35 +61,39 @@
 
 
 #define VKTS_SCENE_NAME "material_probes/material_probes.vkts"
+
 #define VKTS_ENVIRONMENT_SCENE_NAME "primitives/sphere.vkts"
 
-#define VKTS_ENVIRONMENT_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_ENVIRONMENT_COUNT)
+#define VKTS_ENVIRONMENT_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_ENVIRONMENT_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT)
 
 #define VKTS_MAX_CORES 32u
 
 #define VKTS_OUTPUT_BUFFER_SIZE 1024
 
-#define VKTS_BSDF_DESCRIPTOR_SET_COUNT 8
+#define VKTS_BSDF_DESCRIPTOR_SET_COUNT (7 + 1 + 1)
 
 class Example: public vkts::IUpdateThread
 {
 
 private:
 
-	const vkts::IInitialResourcesSP initialResources;
+	const vkts::IContextObjectSP contextObject;
 
 	const int32_t windowIndex;
+
+	const vkts::IVisualContextSP visualContext;
 
 	const vkts::ISurfaceSP surface;
 
 	VkBool32 showStats;
 
-	vkts::ICameraSP camera;
+	vkts::IUserCameraSP camera;
 	vkts::IInputControllerSP inputController;
 
 	vkts::SmartPointerVector<vkts::IUpdateableSP> allUpdateables;
 
 	vkts::ICommandPoolSP commandPool;
+	vkts::IPipelineCacheSP pipelineCache;
 
     vkts::ISemaphoreSP imageAcquiredSemaphore;
     vkts::ISemaphoreSP renderingCompleteSemaphore;
@@ -95,15 +107,18 @@ private:
     VkDescriptorBufferInfo environmentDescriptorBufferInfos[1];
     VkDescriptorBufferInfo descriptorBufferInfos[1];
     VkDescriptorImageInfo environmentDescriptorImageInfos[1];
-    VkDescriptorBufferInfo resolveDescriptorBufferInfos[1];
+    VkDescriptorBufferInfo resolveDescriptorBufferInfos[1 + 1];
     VkDescriptorImageInfo resolveDescriptorImageInfos[VKTS_BSDF_DESCRIPTOR_SET_COUNT];
 
-    VkWriteDescriptorSet writeDescriptorSets[VKTS_BINDING_UNIFORM_BSDF_TOTAL_BINDING_COUNT];
+    VkWriteDescriptorSet writeDescriptorSets[VKTS_BINDING_UNIFORM_BSDF_DEFERRED_TOTAL_BINDING_COUNT];
     VkWriteDescriptorSet environmentWriteDescriptorSets[VKTS_ENVIRONMENT_DESCRIPTOR_SET_COUNT];
     VkWriteDescriptorSet resolveWriteDescriptorSets[VKTS_BSDF_DESCRIPTOR_SET_COUNT];
 
+    std::map<uint32_t, VkTsDynamicOffset> dynamicOffsets;
+
     vkts::IBufferObjectSP vertexViewProjectionUniformBuffer;
 	vkts::IBufferObjectSP environmentVertexViewProjectionUniformBuffer;
+	vkts::IBufferObjectSP resolveFragmentLightsUniformBuffer;
 	vkts::IBufferObjectSP resolveFragmentMatricesUniformBuffer;
 
 	vkts::SmartPointerVector<vkts::IShaderModuleSP> allBSDFVertexShaderModules;
@@ -117,12 +132,19 @@ private:
 	vkts::IPipelineLayoutSP environmentPipelineLayout;
 	vkts::IPipelineLayoutSP resolvePipelineLayout;
 
+    vkts::IGuiRenderFactorySP guiRenderFactory;
+	vkts::IGuiManagerSP guiManager;
+	vkts::IGuiFactorySP guiFactory;
     vkts::IFontSP font;
 
-	vkts::IContextSP sceneContext;
+    vkts::ISceneRenderFactorySP renderFactory;
+	vkts::ISceneManagerSP sceneManager;
+	vkts::ISceneFactorySP sceneFactory;
 	vkts::ISceneSP scene;
 
-	vkts::IContextSP environmentSceneContext;
+    vkts::ISceneRenderFactorySP environmentRenderFactory;
+	vkts::ISceneManagerSP environmentSceneManager;
+	vkts::ISceneFactorySP environmentSceneFactory;
 	vkts::ISceneSP environmentScene;
 
 	vkts::IBufferObjectSP screenPlaneVertexBuffer;
@@ -135,7 +157,7 @@ private:
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allGraphicsPipelines;
 	vkts::IGraphicsPipelineSP resolveGraphicsPipeline;
 
-	vkts::SmartPointerVector<vkts::IMemoryImageSP> allGBufferTextures;
+	vkts::SmartPointerVector<vkts::IImageObjectSP> allGBufferTextures;
 	vkts::SmartPointerVector<vkts::IImageViewSP> allGBufferImageViews;
 	vkts::ISamplerSP gbufferSampler;
 
@@ -147,6 +169,9 @@ private:
     vkts::SmartPointerVector<vkts::IFramebufferSP> framebuffer;
 
     vkts::SmartPointerVector<vkts::ICommandBuffersSP> cmdBuffer;
+
+    vkts::SmartPointerVector<vkts::IFenceSP> cmdBufferFence;
+
     uint32_t rebuildCmdBufferCounter;
 
     uint32_t fps;
@@ -159,15 +184,15 @@ private:
 
 	VkBool32 buildFramebuffer(const int32_t usedBuffer);
 
-	VkBool32 updateDescriptorSets();
+	VkBool32 updateDescriptorSets(const int32_t usedBuffer);
 
-	VkBool32 buildScene(const vkts::ICommandBuffersSP& cmdBuffer);
+	VkBool32 buildScene(const vkts::ICommandObjectSP& commandObject);
 
 	VkBool32 buildSwapchainImageView(const int32_t usedBuffer);
 
 	VkBool32 buildGBufferSampler();
 
-	VkBool32 buildGBufferImageView();
+	VkBool32 buildGBufferImageView(const int32_t usedBuffer);
 
 	VkBool32 buildGBufferTexture(const vkts::ICommandBuffersSP& cmdBuffer);
 
@@ -193,7 +218,7 @@ private:
 
 public:
 
-	Example(const vkts::IInitialResourcesSP& initialResources, const int32_t windowIndex, const vkts::ISurfaceSP& surface);
+	Example(const vkts::IContextObjectSP& contextObject, const int32_t windowIndex, const vkts::IVisualContextSP& visualContext, const vkts::ISurfaceSP& surface);
 
 	virtual ~Example();
 

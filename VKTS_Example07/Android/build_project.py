@@ -48,12 +48,13 @@ copy("../../VKTS_Binaries/shader/SPIR/V/phong_displace.geom.spv", "./assets/shad
 copy("../../VKTS_Binaries/shader/SPIR/V/phong_displace.frag.spv", "./assets/shader/SPIR/V/")
 copy("../../VKTS_Binaries/valley_terrain/*.vkts", "./assets/valley_terrain/")
 copy("../../VKTS_Binaries/valley_terrain/*.tga", "./assets/valley_terrain/")
+copy("../../VKTS_Binaries/cache/valley_terrain/*.tga", "./assets/cache/valley_terrain/")
 
 print("Building project")
 
 os.chdir("jni")
 
-subprocess.call("ndk-build", shell=True)
+subprocess.call("ndk-build -j", shell=True)
 
 os.chdir("..")
 

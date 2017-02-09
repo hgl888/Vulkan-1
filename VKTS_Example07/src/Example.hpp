@@ -49,7 +49,7 @@
 
 #define VKTS_SCENE_NAME "valley_terrain/valley_terrain.vkts"
 
-#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT)
+#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT)
 
 #define VKTS_NUMBER_TASKS 8
 
@@ -58,13 +58,15 @@ class Example: public vkts::IUpdateThread
 
 private:
 
-	const vkts::IInitialResourcesSP initialResources;
+	const vkts::IContextObjectSP contextObject;
 
 	const int32_t windowIndex;
 
+	const vkts::IVisualContextSP visualContext;
+
 	const vkts::ISurfaceSP surface;
 
-	vkts::ICameraSP camera;
+	vkts::IUserCameraSP camera;
 	vkts::IInputControllerSP inputController;
 
 	vkts::SmartPointerVector<vkts::IUpdateableSP> allUpdateables;
@@ -78,6 +80,8 @@ private:
     VkDescriptorBufferInfo descriptorBufferInfos[1 + 1];
     VkWriteDescriptorSet writeDescriptorSets[VKTS_DESCRIPTOR_SET_COUNT];
 
+    std::map<uint32_t, VkTsDynamicOffset> dynamicOffsets;
+
 	vkts::IBufferObjectSP vertexViewProjectionUniformBuffer;
 	vkts::IBufferObjectSP fragmentUniformBuffer;
 
@@ -89,7 +93,9 @@ private:
 
 	vkts::IPipelineLayoutSP pipelineLayout;
 
-	vkts::IContextSP sceneContext;
+	vkts::ISceneRenderFactorySP renderFactory;
+	vkts::ISceneManagerSP sceneManager;
+	vkts::ISceneFactorySP sceneFactory;
 	vkts::ISceneSP scene;
 
 	vkts::SmartPointerVector<IBuildCommandTaskSP> allBuildCommandTasks;
@@ -100,7 +106,7 @@ private:
 
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allGraphicsPipelines;
 
-	vkts::IMemoryImageSP depthTexture;
+	vkts::IImageObjectSP depthTexture;
 	vkts::IImageViewSP depthStencilImageView;
 
     uint32_t swapchainImagesCount;
@@ -110,6 +116,8 @@ private:
     vkts::SmartPointerVector<vkts::IFramebufferSP> framebuffer;
 
     vkts::SmartPointerVector<vkts::ICommandBuffersSP> cmdBuffer;
+
+    vkts::SmartPointerVector<vkts::IFenceSP> cmdBufferFence;
 
     uint32_t commandBufferCount;
 
@@ -123,7 +131,7 @@ private:
 
 	VkBool32 updateDescriptorSets();
 
-	VkBool32 buildScene(const vkts::IUpdateThreadContext& updateContext, const vkts::ICommandBuffersSP& cmdBuffer);
+	VkBool32 buildScene(const vkts::ICommandObjectSP& commandObject);
 
 	VkBool32 buildDepthStencilImageView();
 
@@ -147,7 +155,7 @@ private:
 
 public:
 
-	Example(const vkts::IInitialResourcesSP& initialResources, const int32_t windowIndex, const vkts::ISurfaceSP& surface);
+	Example(const vkts::IContextObjectSP& contextObject, const int32_t windowIndex, const vkts::IVisualContextSP& visualContext, const vkts::ISurfaceSP& surface);
 
 	virtual ~Example();
 

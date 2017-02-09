@@ -45,12 +45,13 @@ copy("../../VKTS_Binaries/shader/SPIR/V/vertex_normal_texcoord.vert.spv", "./ass
 copy("../../VKTS_Binaries/shader/SPIR/V/texture_light.frag.spv", "./assets/shader/SPIR/V/")
 copy("../../VKTS_Binaries/textured_cube/*.vkts", "./assets/textured_cube/")
 copy("../../VKTS_Binaries/textured_cube/*.tga", "./assets/textured_cube/")
+copy("../../VKTS_Binaries/cache/textured_cube/*.tga", "./assets/cache/textured_cube/")
 
 print("Building project")
 
 os.chdir("jni")
 
-subprocess.call("ndk-build", shell=True)
+subprocess.call("ndk-build -j", shell=True)
 
 os.chdir("..")
 

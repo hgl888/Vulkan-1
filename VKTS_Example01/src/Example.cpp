@@ -26,8 +26,8 @@
 
 #include "Example.hpp"
 
-Example::Example(const VkInstance instance, const VkPhysicalDevice physicalDevice, const int32_t windowIndex, const vkts::ISurfaceSP& surface, const VkDevice device, const uint32_t queueFamilyIndex, const VkQueue queue) :
-		IUpdateThread(), instance(instance), physicalDevice(physicalDevice), windowIndex(windowIndex), surface(surface), device(device), queueFamilyIndex(queueFamilyIndex), queue(queue), commandPool(VK_NULL_HANDLE), imageAcquiredSemaphore(VK_NULL_HANDLE), renderingCompleteSemaphore(VK_NULL_HANDLE), swapchainCreateInfo{}, swapchain(VK_NULL_HANDLE), renderPass(VK_NULL_HANDLE), swapchainImagesCount(0), swapchainImage(), swapchainImageView(), framebuffer(), cmdBuffer()
+Example::Example(const VkInstance instance, const VkPhysicalDevice physicalDevice, const int32_t windowIndex, const vkts::IVisualContextSP& visualContext, const vkts::ISurfaceSP& surface, const VkDevice device, const uint32_t queueFamilyIndex, const VkQueue queue) :
+		IUpdateThread(), instance(instance), physicalDevice(physicalDevice), windowIndex(windowIndex), visualContext(visualContext), surface(surface), device(device), queueFamilyIndex(queueFamilyIndex), queue(queue), commandPool(VK_NULL_HANDLE), imageAcquiredSemaphore(VK_NULL_HANDLE), renderingCompleteSemaphore(VK_NULL_HANDLE), swapchainCreateInfo{}, swapchain(VK_NULL_HANDLE), renderPass(VK_NULL_HANDLE), swapchainImagesCount(0), swapchainImage(), swapchainImageView(), framebuffer(), cmdBuffer()
 {
 }
 
@@ -177,8 +177,8 @@ VkBool32 Example::buildFramebuffer(const int32_t usedBuffer)
 	framebufferCreateInfo.renderPass = renderPass;
 	framebufferCreateInfo.attachmentCount = 1;
 	framebufferCreateInfo.pAttachments = &swapchainImageView[usedBuffer];
-	framebufferCreateInfo.width = (uint32_t) swapchainCreateInfo.imageExtent.width;
-	framebufferCreateInfo.height = (uint32_t) swapchainCreateInfo.imageExtent.height;
+	framebufferCreateInfo.width = swapchainCreateInfo.imageExtent.width;
+	framebufferCreateInfo.height = swapchainCreateInfo.imageExtent.height;
 	framebufferCreateInfo.layers = 1;
 
 	result = vkCreateFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffer[usedBuffer]);
@@ -371,14 +371,7 @@ VkBool32 Example::buildResources(const vkts::IUpdateThreadContext& updateContext
 		return VK_FALSE;
 	}
 
-	std::unique_ptr<VkPresentModeKHR[]> surfacePresentModes = std::unique_ptr<VkPresentModeKHR[]>(new VkPresentModeKHR[surfacePresentModesCount]);
-
-	if (!surfacePresentModes.get())
-	{
-		vkts::logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Could not get surface present modes.");
-
-		return VK_FALSE;
-	}
+	std::vector<VkPresentModeKHR> surfacePresentModes(surfacePresentModesCount);
 
 	result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface->getSurface(), &surfacePresentModesCount, &surfacePresentModes[0]);
 
@@ -403,14 +396,7 @@ VkBool32 Example::buildResources(const vkts::IUpdateThreadContext& updateContext
 		return VK_FALSE;
 	}
 
-	std::unique_ptr<VkSurfaceFormatKHR[]> surfaceFormats = std::unique_ptr<VkSurfaceFormatKHR[]>(new VkSurfaceFormatKHR[surfaceFormatsCount]);
-
-	if (!surfaceFormats.get())
-	{
-		vkts::logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Could not create surface formats.");
-
-		return VK_FALSE;
-	}
+	std::vector<VkSurfaceFormatKHR> surfaceFormats(surfaceFormatsCount);
 
 	result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface->getSurface(), &surfaceFormatsCount, &surfaceFormats[0]);
 
@@ -427,7 +413,7 @@ VkBool32 Example::buildResources(const vkts::IUpdateThreadContext& updateContext
 
 	VkBool32 surfaceFormatFound = VK_FALSE;
 
-	for (size_t i = 0; i < surfaceFormatsCount; i++)
+	for (uint32_t i = 0; i < surfaceFormatsCount; i++)
 	{
 		if (surfaceFormats[i].format == format && surfaceFormats[i].colorSpace == imageColorSpace)
 		{
@@ -545,7 +531,7 @@ void Example::terminateResources(const vkts::IUpdateThreadContext& updateContext
 //
 VkBool32 Example::init(const vkts::IUpdateThreadContext& updateContext)
 {
-	if (!updateContext.isWindowAttached(windowIndex))
+	if (!visualContext->isWindowAttached(windowIndex))
 	{
 		vkts::logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Could not get window.");
 

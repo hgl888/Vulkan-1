@@ -33,6 +33,9 @@
 
 #define VKTS_NUMBER_DYNAMIC_STATES 2
 
+#define VKTS_NUMBER_DYNAMIC_UNIFORM_BUFFERS 3
+#define VKTS_MAX_NUMBER_BUFFERS 3
+
 #define VKTS_NUMBER_BUFFERS 2
 #define VKTS_SHADER_STAGE_COUNT 2
 #define VKTS_PIPELINE_CACHE_SIZE 0
@@ -44,16 +47,18 @@
 
 #define VKTS_SCENE_NAME "textured_cube/textured_cube.vkts"
 
-#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_NO_DISPLACEMENT_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT)
+#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT)
 
 class Example: public vkts::IUpdateThread
 {
 
 private:
 
-	const vkts::IInitialResourcesSP initialResources;
+	const vkts::IContextObjectSP contextObject;
 
 	const int32_t windowIndex;
+
+	const vkts::IVisualContextSP visualContext;
 
 	const vkts::ISurfaceSP surface;
 
@@ -66,6 +71,8 @@ private:
     VkDescriptorBufferInfo descriptorBufferInfos[1 + 1];
     VkWriteDescriptorSet writeDescriptorSets[VKTS_DESCRIPTOR_SET_COUNT];
 
+    std::map<uint32_t, VkTsDynamicOffset> dynamicOffsets;
+
 	vkts::IBufferObjectSP vertexViewProjectionUniformBuffer;
 	vkts::IBufferObjectSP fragmentUniformBuffer;
 
@@ -74,7 +81,9 @@ private:
 
 	vkts::IPipelineLayoutSP pipelineLayout;
 
-	vkts::IContextSP sceneContext;
+	vkts::ISceneRenderFactorySP renderFactory;
+	vkts::ISceneManagerSP sceneManager;
+	vkts::ISceneFactorySP sceneFactory;
 	vkts::ISceneSP scene;
 
 	vkts::ISwapchainSP swapchain;
@@ -83,7 +92,7 @@ private:
 
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allGraphicsPipelines;
 
-	vkts::IMemoryImageSP depthTexture;
+	vkts::IImageObjectSP depthTexture;
 	vkts::IImageViewSP depthStencilImageView;
 
     uint32_t swapchainImagesCount;
@@ -94,6 +103,8 @@ private:
 
     vkts::SmartPointerVector<vkts::ICommandBuffersSP> cmdBuffer;
 
+    vkts::SmartPointerVector<vkts::IFenceSP> cmdBufferFence;
+
 	VkBool32 buildCmdBuffer(const int32_t usedBuffer);
 
 	VkBool32 buildFramebuffer(const int32_t usedBuffer);
@@ -102,7 +113,7 @@ private:
 
 	VkBool32 updateDescriptorSets();
 
-	VkBool32 buildScene(const vkts::ICommandBuffersSP& cmdBuffer);
+	VkBool32 buildScene(const vkts::ICommandObjectSP& commandObject);
 
 	VkBool32 buildDepthStencilImageView();
 
@@ -126,7 +137,7 @@ private:
 
 public:
 
-	Example(const vkts::IInitialResourcesSP& initialResources, const int32_t windowIndex, const vkts::ISurfaceSP& surface);
+	Example(const vkts::IContextObjectSP& contextObject, const int32_t windowIndex, const vkts::IVisualContextSP& visualContext, const vkts::ISurfaceSP& surface);
 
 	virtual ~Example();
 

@@ -26,7 +26,7 @@
 
 #include "BuildCommandTask.hpp"
 
-vkts::Overwrite* BuildCommandTask::overwrite = nullptr;
+vkts::OverwriteDraw* BuildCommandTask::overwrite = nullptr;
 
 VkBool32 BuildCommandTask::execute()
 {
@@ -35,19 +35,19 @@ VkBool32 BuildCommandTask::execute()
         return VK_FALSE;
     }
 
-    if (!cmdBuffer.get())
+    if (!cmdBuffer[usedBuffer].get())
     {
     	return VK_FALSE;
     }
     else
     {
-    	cmdBuffer->reset();
+    	cmdBuffer[usedBuffer]->reset();
     }
 
     // Update / transform the scene.
     if (scene.get())
     {
-        scene->updateRecursive(updateContext, objectOffset, objectStep);
+        scene->updateTransformRecursive(updateContext.getDeltaTime(), updateContext.getDeltaTicks(), updateContext.getTickTime(), usedBuffer, objectOffset, objectStep);
     }
 
     //
@@ -61,7 +61,7 @@ VkBool32 BuildCommandTask::execute()
     commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT | VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
     commandBufferBeginInfo.pInheritanceInfo = commandBufferInheritanceInfo;
 
-    vkBeginCommandBuffer(cmdBuffer->getCommandBuffer(), &commandBufferBeginInfo);
+    vkBeginCommandBuffer(cmdBuffer[usedBuffer]->getCommandBuffer(), &commandBufferBeginInfo);
 
     VkViewport viewport{};
 
@@ -72,7 +72,7 @@ VkBool32 BuildCommandTask::execute()
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    vkCmdSetViewport(cmdBuffer->getCommandBuffer(), 0, 1, &viewport);
+    vkCmdSetViewport(cmdBuffer[usedBuffer]->getCommandBuffer(), 0, 1, &viewport);
 
     VkRect2D scissor{};
 
@@ -80,14 +80,14 @@ VkBool32 BuildCommandTask::execute()
     scissor.offset.y = 0;
     scissor.extent = extent;
 
-    vkCmdSetScissor(cmdBuffer->getCommandBuffer(), 0, 1, &scissor);
+    vkCmdSetScissor(cmdBuffer[usedBuffer]->getCommandBuffer(), 0, 1, &scissor);
 
     if (scene.get())
     {
-        scene->bindDrawIndexedRecursive(cmdBuffer, allGraphicsPipelines, overwrite, 0, objectOffset, objectStep);
+        scene->drawRecursive(cmdBuffer[usedBuffer], allGraphicsPipelines, usedBuffer, dynamicOffsets, overwrite, objectOffset, objectStep);
     }
 
-    vkEndCommandBuffer(cmdBuffer->getCommandBuffer());
+    vkEndCommandBuffer(cmdBuffer[usedBuffer]->getCommandBuffer());
 
     //
     // Record secondary command buffer end.
@@ -98,11 +98,11 @@ VkBool32 BuildCommandTask::execute()
 	return VK_TRUE;
 }
 
-BuildCommandTask::BuildCommandTask(const uint64_t id, const vkts::IUpdateThreadContext& updateContext, const vkts::IInitialResourcesSP& initialResources, const vkts::SmartPointerVector<vkts::IGraphicsPipelineSP>& allGraphicsPipelines, const vkts::ISceneSP& scene, const uint32_t& objectOffset, const uint32_t& objectStep) :
-	ITask(id), updateContext(updateContext), initialResources(initialResources), allGraphicsPipelines(allGraphicsPipelines), scene(scene), objectOffset(objectOffset), objectStep(objectStep), commandBufferInheritanceInfo(nullptr), extent{0, 0}, commandPool(nullptr), cmdBuffer(nullptr)
+BuildCommandTask::BuildCommandTask(const uint64_t id, const vkts::IUpdateThreadContext& updateContext, const vkts::IContextObjectSP& contextObject, const vkts::SmartPointerVector<vkts::IGraphicsPipelineSP>& allGraphicsPipelines, const vkts::ISceneSP& scene, const uint32_t buffers, const std::map<uint32_t, VkTsDynamicOffset>& dynamicOffsets, const uint32_t& objectOffset, const uint32_t& objectStep) :
+	ITask(id), updateContext(updateContext), contextObject(contextObject), allGraphicsPipelines(allGraphicsPipelines), scene(scene), dynamicOffsets(dynamicOffsets), objectOffset(objectOffset), objectStep(objectStep), commandBufferInheritanceInfo(nullptr), extent{0, 0}, usedBuffer(0), commandPool(nullptr), cmdBuffer()
 {
 	// This pool will contain secondary command buffers, which will be reset.
-	commandPool = vkts::commandPoolCreate(initialResources->getDevice()->getDevice(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, initialResources->getQueue()->getQueueFamilyIndex());
+	commandPool = vkts::commandPoolCreate(contextObject->getDevice()->getDevice(), VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT, contextObject->getQueue()->getQueueFamilyIndex());
 
 	if (!commandPool.get())
 	{
@@ -111,21 +111,33 @@ BuildCommandTask::BuildCommandTask(const uint64_t id, const vkts::IUpdateThreadC
 
 	//
 
-	cmdBuffer = vkts::commandBuffersCreate(initialResources->getDevice()->getDevice(), commandPool->getCmdPool(), VK_COMMAND_BUFFER_LEVEL_SECONDARY, 1);
-
-	if (!cmdBuffer.get())
+	for (uint32_t i = 0; i < buffers; i++)
 	{
-		vkts::logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Could not create command buffer.");
+		auto currentCmdBuffer = vkts::commandBuffersCreate(contextObject->getDevice()->getDevice(), commandPool->getCmdPool(), VK_COMMAND_BUFFER_LEVEL_SECONDARY, 1);
 
-		commandPool->destroy();
+		if (!currentCmdBuffer.get())
+		{
+			vkts::logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Could not create command buffer.");
+
+			commandPool->destroy();
+
+			for (uint32_t k = 0; k < cmdBuffer.size(); k++)
+			{
+				cmdBuffer[k]->destroy();
+			}
+
+			return;
+		}
+
+		cmdBuffer.append(currentCmdBuffer);
 	}
 }
 
 BuildCommandTask::~BuildCommandTask()
 {
-	if (cmdBuffer.get())
+	for (uint32_t i = 0; i < cmdBuffer.size(); i++)
 	{
-		cmdBuffer->destroy();
+		cmdBuffer[i]->destroy();
 	}
 
 	if (commandPool.get())
@@ -144,17 +156,27 @@ void BuildCommandTask::setExtent(const VkExtent2D& extent)
     this->extent = extent;
 }
 
+void BuildCommandTask::setUsedBuffer(const uint32_t usedBuffer)
+{
+	this->usedBuffer = usedBuffer;
+}
+
 VkCommandBuffer BuildCommandTask::getCommandBuffer() const
 {
-	if (cmdBuffer.get())
+	if (usedBuffer >= (uint32_t)cmdBuffer.size())
 	{
-		return cmdBuffer->getCommandBuffer();
+		return VK_NULL_HANDLE;
+	}
+
+	if (cmdBuffer[usedBuffer].get())
+	{
+		return cmdBuffer[usedBuffer]->getCommandBuffer();
 	}
 
 	return VK_NULL_HANDLE;
 }
 
-void BuildCommandTask::setOverwrite(vkts::Overwrite* overwrite)
+void BuildCommandTask::setOverwrite(vkts::OverwriteDraw* overwrite)
 {
     BuildCommandTask::overwrite = overwrite;
 }

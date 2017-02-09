@@ -51,7 +51,7 @@
 #define VKTS_STANDARD_FRAGMENT_SHADER_NAME 			"shader/SPIR/V/phong_tangents_shadow.frag.spv"
 #define VKTS_STANDARD_SHADOW_FRAGMENT_SHADER_NAME	"shader/SPIR/V/phong_tangents_write_shadow.frag.spv"
 
-#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_NO_DISPLACEMENT_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT + VKTS_BINDING_UNIFORM_SHADOW_BINDING_COUNT)
+#define VKTS_DESCRIPTOR_SET_COUNT (VKTS_BINDING_UNIFORM_PHONG_BINDING_COUNT + VKTS_BINDING_UNIFORM_LIGHTING_BINDING_COUNT + VKTS_BINDING_UNIFORM_TRANSFORM_BINDING_COUNT + VKTS_BINDING_UNIFORM_SHADOW_BINDING_COUNT + VKTS_BINDING_STORAGE_IMAGE_COUNT)
 
 #define VKTS_VOXELIZE_VERTEX_SHADER_NAME 			"shader/SPIR/V/voxelize.vert.spv"
 #define VKTS_VOXELIZE_GEOMETRY_SHADER_NAME 			"shader/SPIR/V/voxelize.geom.spv"
@@ -64,13 +64,17 @@ class Example: public vkts::IUpdateThread
 
 private:
 
-	const vkts::IInitialResourcesSP initialResources;
+	const vkts::IContextObjectSP contextObject;
 
 	const int32_t windowIndex;
 
+	const vkts::IVisualContextSP visualContext;
+
 	const vkts::ISurfaceSP surface;
 
-	vkts::ICameraSP camera;
+	VkFormat depthFormat;
+
+	vkts::IUserCameraSP camera;
 	vkts::IInputControllerSP inputController;
 
 	vkts::SmartPointerVector<vkts::IUpdateableSP> allUpdateables;
@@ -78,13 +82,17 @@ private:
 	vkts::ICommandPoolSP commandPool;
 
     vkts::ISemaphoreSP imageAcquiredSemaphore;
+    vkts::ISemaphoreSP betweenSemaphore;
     vkts::ISemaphoreSP renderingCompleteSemaphore;
 
 	vkts::IDescriptorSetLayoutSP descriptorSetLayout;
-	VkDescriptorImageInfo descriptorImageInfos[1];
+	VkDescriptorImageInfo descriptorImageInfos[1 + VKTS_BINDING_STORAGE_IMAGE_COUNT];
     VkDescriptorBufferInfo descriptorBufferInfos[1 + 1 + 1];
 
     VkWriteDescriptorSet writeDescriptorSets[VKTS_DESCRIPTOR_SET_COUNT];
+
+    std::map<uint32_t, VkTsDynamicOffset> dynamicOffsetsShadowPass;
+    std::map<uint32_t, VkTsDynamicOffset> dynamicOffsetsColorPass;
 
 	vkts::IBufferObjectSP vertexViewProjectionUniformBuffer;
 	vkts::IBufferObjectSP fragmentUniformBuffer;
@@ -106,7 +114,9 @@ private:
 	ILoadTaskSP loadTask;
 
 	VkBool32 sceneLoaded;
-	vkts::IContextSP sceneContext;
+	vkts::ISceneRenderFactorySP renderFactory;
+	vkts::ISceneManagerSP sceneManager;
+	vkts::ISceneFactorySP sceneFactory;
 	vkts::ISceneSP scene;
 
     vkts::ISwapchainSP swapchain;
@@ -119,19 +129,22 @@ private:
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allBlendGraphicsPipelines;
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allBlendCwGraphicsPipelines;
 	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allShadowGraphicsPipelines;
+	vkts::SmartPointerVector<vkts::IGraphicsPipelineSP> allVoxelGraphicsPipelines;
 
-	vkts::IMemoryImageSP shadowTexture;
-	vkts::IMemoryImageSP msaaColorTexture;
-	vkts::IMemoryImageSP msaaDepthTexture;
-	vkts::IMemoryImageSP depthTexture;
-	vkts::IMemoryImageSP voxelTexture[3];
+	vkts::SmartPointerVector<vkts::IImageObjectSP> shadowTexture;
+	vkts::IImageObjectSP msaaColorTexture;
+	vkts::IImageObjectSP msaaDepthTexture;
+	vkts::IImageObjectSP depthTexture;
+	vkts::IImageObjectSP voxelTexture[VKTS_BINDING_STORAGE_IMAGE_COUNT];
 
-	vkts::IImageViewSP shadowImageView;
+	vkts::SmartPointerVector<vkts::IImageViewSP> shadowImageView;
 	vkts::IImageViewSP msaaColorImageView;
 	vkts::IImageViewSP msaaDepthStencilImageView;
 	vkts::IImageViewSP depthStencilImageView;
+	vkts::IImageViewSP voxelImageView[VKTS_BINDING_STORAGE_IMAGE_COUNT];
 
 	vkts::ISamplerSP shadowSampler;
+	vkts::ISamplerSP voxelSampler[VKTS_BINDING_STORAGE_IMAGE_COUNT];
 
     uint32_t swapchainImagesCount;
 
@@ -140,22 +153,22 @@ private:
     vkts::SmartPointerVector<vkts::IFramebufferSP> framebuffer;
     vkts::SmartPointerVector<vkts::IFramebufferSP> shadowFramebuffer;
 
-    vkts::SmartPointerVector<vkts::IFenceSP> fences;
-
     vkts::SmartPointerVector<vkts::ICommandBuffersSP> cmdBuffer;
     vkts::SmartPointerVector<vkts::ICommandBuffersSP> shadowCmdBuffer;
 
-	VkBool32 buildCmdBuffer(const int32_t usedBuffer);
+    vkts::SmartPointerVector<vkts::IFenceSP> cmdBufferFence;
 
-	VkBool32 buildFences(const int32_t usedBuffer);
+	VkBool32 buildCmdBuffer(const int32_t usedBuffer);
 
 	VkBool32 buildFramebuffer(const int32_t usedBuffer);
 
 	VkBool32 buildSwapchainImageView(const int32_t usedBuffer);
 
-	VkBool32 updateDescriptorSets();
+	VkBool32 updateDescriptorSets(const int32_t usedBuffer);
 
 	VkBool32 buildShadowSampler();
+
+	VkBool32 buildVoxelSampler();
 
 	VkBool32 buildDepthStencilImageView();
 
@@ -163,7 +176,9 @@ private:
 
 	VkBool32 buildMSAAColorImageView();
 
-	VkBool32 buildShadowImageView();
+	VkBool32 buildShadowImageView(const int32_t usedBuffer);
+
+	VkBool32 buildVoxelImageView();
 
 	VkBool32 buildVoxelTexture(const vkts::ICommandBuffersSP& cmdBuffer);
 
@@ -173,7 +188,7 @@ private:
 
 	VkBool32 buildMSAAColorTexture(const vkts::ICommandBuffersSP& cmdBuffer);
 
-	VkBool32 buildShadowTexture(const vkts::ICommandBuffersSP& cmdBuffer);
+	VkBool32 buildShadowTexture(const vkts::ICommandBuffersSP& cmdBuffer, const int32_t usedBuffer);
 
 	VkBool32 buildPipeline();
 
@@ -193,7 +208,7 @@ private:
 
 public:
 
-	Example(const vkts::IInitialResourcesSP& initialResources, const int32_t windowIndex, const vkts::ISurfaceSP& surface);
+	Example(const vkts::IContextObjectSP& contextObject, const int32_t windowIndex, const vkts::IVisualContextSP& visualContext, const vkts::ISurfaceSP& surface);
 
 	virtual ~Example();
 
