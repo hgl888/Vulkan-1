@@ -47,6 +47,16 @@ protected:
 
     VkBool32 transparent;
 
+    VkBool32 sorted;
+
+    VkBool32 packed;
+
+    float alphaCutoff;
+
+    float ambientOcclusionStrength;
+
+    VkBool32 specularGlossiness;
+
 public:
 
     BSDFMaterial() = delete;
@@ -97,7 +107,34 @@ public:
 
     virtual void setTransparent(const VkBool32 transparent) override;
 
+
+    virtual VkBool32 isSorted() const override;
+
+    virtual void setSorted(const VkBool32 sorted) override;
+
+
+    virtual VkBool32 isPacked() const override;
+
+    virtual void setPacked(const VkBool32 packed) override;
+
+
+    virtual float getAlphaCutoff() const override;
+
+    virtual void setAlphaCutoff(const float alphaCutoff) override;
+
+
+    virtual float getAmbientOcclusionStrength() const override;
+
+    virtual void setAmbientOcclusionStrength(const float ambientOcclusionStrength) override;
+
+
+    virtual VkBool32 isSpecularGlossiness() const override;
+
+    virtual void setSpecularGlossiness(const VkBool32 specularGlossiness) override;
+
     //
+
+    virtual void updateParameterRecursive(Parameter* parameter) override;
 
     virtual void updateDescriptorSetsRecursive(const uint32_t allWriteDescriptorSetsCount, VkWriteDescriptorSet* allWriteDescriptorSets, const uint32_t currentBuffer, const std::string& nodeName) override;
 

@@ -1,0 +1,50 @@
+apply plugin: 'com.android.application'
+android {
+    compileSdkVersion 24
+    buildToolsVersion '25.0.2'
+    defaultConfig {
+        applicationId = 'tv.nopper.VKTS_Example01'
+        minSdkVersion 24
+        targetSdkVersion 24
+        ndk {
+            abiFilters 'x86', 'armeabi-v7a', 'arm64-v8a'
+        }
+        externalNativeBuild {
+            cmake {
+                arguments '-DANDROID_PLATFORM=android-24', '-DANDROID_TOOLCHAIN=clang', '-DANDROID_STL=c++_static', '-DANDROID_CPP_FEATURES=exceptions'
+                cppFlags '-std=c++11'
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+        }
+        debug {
+        }
+    }
+
+    defaultConfig {
+        externalNativeBuild {
+            cmake {
+                targets "VKTS_Example01"
+            }
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path '../../VKTS_Example01/CMakeLists.txt'
+        }
+    }
+}
+
+task copyFiles(type: Copy) {
+    println("Copying needed assets:")
+    //
+    println("No assets needed.")
+}
+
+preBuild.dependsOn(copyFiles)

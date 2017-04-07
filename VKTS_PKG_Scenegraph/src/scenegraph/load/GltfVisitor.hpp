@@ -32,12 +32,24 @@
 namespace vkts
 {
 
+enum GltfSubState {
+	GltfSubState_Start,
+	GltfSubState_End,
+
+	GltfSubState_Error,
+
+	GltfSubState_NormalTexture,
+	GltfSubState_OcclusionTexture
+};
+
 enum GltfState {
 	GltfState_Start,
 	GltfState_End,
 
 	GltfState_Error,
 
+	GltfState_ExtensionsRequired,
+	GltfState_ExtensionsUsed,
 	GltfState_Asset,
 	GltfState_Buffers,
 	GltfState_BufferViews,
@@ -65,22 +77,28 @@ enum GltfState {
 	GltfState_Animation,
 	GltfState_Scene,
 
+	GltfState_Accessor_Sparse,
+	GltfState_Accessor_Sparse_Indices,
+	GltfState_Accessor_Sparse_Values,
+	GltfState_Material_PbrMetallicRoughness,
 	GltfState_Material_Extensions,
-	GltfState_Material_Extensions_Pbr,
-	GltfState_Material_Extensions_Pbr_Values,
+	GltfState_Material_Extensions_PbrSpecularGlossiness,
+	GltfState_Material_TextureInfo,
 	GltfState_Mesh_Primitive,
 	GltfState_Mesh_Primitive_Attributes,
 	GltfState_Skin_InverseBindMatrices,
-	GltfState_Skin_JointNames,
+	GltfState_Skin_Joints,
 	GltfState_Node_Children,
-	GltfState_Node_Skeletons,
-	GltfState_Node_Mesh,
 	GltfState_Animation_Sampler,
-	GltfState_Animation_Sampler_Properties,
 	GltfState_Animation_Channel,
 	GltfState_Animation_Channel_Target,
 	GltfState_Scene_Node
 };
+
+typedef struct _GltfExtensions {
+	VkBool32 required_pbrSpecularGlossiness;
+	VkBool32 used_pbrSpecularGlossiness;
+} GltfExtensions;
 
 typedef struct _GltfBuffer {
 	IBinaryBufferSP binaryBuffer;
@@ -92,31 +110,41 @@ typedef struct _GltfBufferView {
 	GltfBuffer* buffer;
     uint32_t byteOffset;
     uint32_t byteLength;
+    uint32_t byteStride;
+    int32_t target;
 	std::string name;
 } GltfBufferView;
+
+typedef struct _GltfSparseIndex {
+	uint32_t bufferView;
+	uint32_t byteOffset;
+	int32_t componentType;
+	std::string name;
+} GltfSparseIndex;
+
+typedef struct _GltfSparseValue {
+	uint32_t bufferView;
+	uint32_t byteOffset;
+	std::string name;
+} GltfSparseValue;
+
+typedef struct _GltfSparse {
+	uint32_t count;
+	std::vector<GltfSparseIndex> indices;
+	std::vector<GltfSparseValue> values;
+	std::string name;
+} GltfSparse;
 
 typedef struct _GltfAccessor {
 	GltfBufferView* bufferView;
     uint32_t byteOffset;
-    uint32_t byteStride;
     int32_t componentType;
     VkBool32 normalized;
     uint32_t count;
     std::string type;
-
-    Vector<int8_t> minByte;
-    Vector<uint8_t> minUnsignedByte;
-    Vector<int16_t> minShort;
-    Vector<uint16_t> minUnsignedShort;
-    Vector<uint32_t> minUnsignedInteger;
-    Vector<float> minFloat;
-
-    Vector<int8_t> maxByte;
-    Vector<uint8_t> maxUnsignedByte;
-    Vector<int16_t> maxShort;
-    Vector<uint16_t> maxUnsignedShort;
-    Vector<uint32_t> maxUnsignedInteger;
-    Vector<float> maxFloat;
+    Vector<float> max;
+    Vector<float> min;
+    GltfSparse* sparse;
 	std::string name;
 } GltfAccessor;
 
@@ -134,8 +162,8 @@ typedef struct _GltfSampler {
 } GltfSampler;
 
 typedef struct _GltfTexture {
-	int32_t format;
 	int32_t internalFormat;
+	int32_t format;
 	GltfSampler* sampler;
 	GltfImage* source;
 	int32_t target;
@@ -143,25 +171,43 @@ typedef struct _GltfTexture {
 	std::string name;
 } GltfTexture;
 
-typedef struct _GltfMaterial {
-	// Not processing technique.
-	// Not processing values.
+typedef struct _GltfTextureInfo {
+	int32_t index;
+	int32_t texCoord;
+	float normalScale;
+	float occlusionStrength;
+} GltfTextureInfo;
 
-	// Only using PBR.
-
-	std::string materialModel;
-
+typedef struct _GltfPbrMetallicRoughness {
 	float baseColorFactor[4];
 	GltfTexture* baseColorTexture;
 	float metallicFactor;
-	GltfTexture* metallicTexture;
 	float roughnessFactor;
-	GltfTexture* roughnessTexture;
-	float normalFactor;
+	GltfTexture* metallicRoughnessTexture;
+} GltfPbrMetallicRoughness;
+
+typedef struct _GltfPbrSpecularGlossiness {
+	float diffuseFactor[4];
+	GltfTexture* diffuseTexture;
+	float specularFactor[3];
+	float glossinessFactor;
+	GltfTexture* specularGlossinessTexture;
+} GltfPbrSpecularGlossiness;
+
+typedef struct _GltfMaterial {
+	std::string alphaMode;
+	float alphaCutoff;
+	VkBool32 doubleSided;
+
+	VkBool32 useSpecularGlossiness;
+	GltfPbrMetallicRoughness pbrMetallicRoughness;
+	GltfPbrSpecularGlossiness pbrSpecularGlossiness;
+
+	float normalScale;
 	GltfTexture* normalTexture;
-	float aoFactor;
-	GltfTexture* aoTexture;
-	float emissiveFactor[4];
+	float occlusionStrength;
+	GltfTexture* occlusionTexture;
+	float emissiveFactor[3];
 	GltfTexture* emissiveTexture;
 
 	std::string name;
@@ -172,6 +218,7 @@ typedef struct _GltfPrimitive {
 	GltfAccessor* normal;
 	GltfAccessor* binormal;
 	GltfAccessor* tangent;
+	GltfAccessor* tangent4;
 	GltfAccessor* texCoord;
 	GltfAccessor* joint;
 	GltfAccessor* weight;
@@ -190,30 +237,20 @@ typedef struct _GltfMesh {
 struct _GltfNode;
 
 typedef struct _GltfSkin {
-	float bindShapeMatrix[16];
 	Vector<GltfAccessor*> inverseBindMatrices;
-	Vector<std::string> jointNames;
-	Vector<struct _GltfNode*> jointNodes;
+	uint32_t skeleton;
+	Vector<uint32_t> joints;
 	std::string name;
 } GltfSkin;
 
 typedef struct _GltfNode {
-	Vector<std::string> children;
-	Vector<std::string> skeletons;
+	Vector<uint32_t> children;
 	GltfSkin* skin;
-	std::string jointName;
 	float matrix[16];
-	Vector<GltfMesh*> meshes;
+	GltfMesh* mesh;
 	float rotation[4];
 	float scale[3];
 	float translation[3];
-	// Helper
-	Vector<const struct _GltfNode*> childrenPointer;
-	Vector<const struct _GltfNode*> skeletonsPointer;
-	VkBool32 useMatrix;
-	VkBool32 useRotation;
-	VkBool32 useScale;
-	VkBool32 useTranslation;
 	std::string name;
 } GltfNode;
 
@@ -232,7 +269,7 @@ typedef struct _GltfChannel {
 } GltfChannel;
 
 typedef struct _GltfAnimation {
-	Map<std::string, GltfAnimation_Sampler> samplers;
+	Vector<GltfAnimation_Sampler> samplers;
 	Vector<GltfChannel> channels;
 	std::string name;
 } GltfAnimation;
@@ -250,6 +287,7 @@ private:
 	const std::string directory;
 
 	std::stack<enum GltfState> state;
+	std::stack<enum GltfSubState> subState;
 
 	VkBool32 gltfBool;
 	std::string gltfString;
@@ -264,13 +302,19 @@ private:
 
 	VkBool32 objectArray;
 
+	GltfExtensions gltfExtensions;
+
 	GltfBuffer gltfBuffer;
 	GltfBufferView gltfBufferView;
+	GltfSparse gltfSparse;
+	GltfSparseIndex gltfSparseIndex;
+	GltfSparseValue gltfSparseValue;
 	GltfAccessor gltfAccessor;
 	GltfPrimitive gltfPrimitive;
 	GltfImage gltfImage;
 	GltfSampler gltfSampler;
 	GltfTexture gltfTexture;
+	GltfTextureInfo gltfTextureInfo;
 	GltfMaterial gltfMaterial;
 	GltfMesh gltfMesh;
 	GltfSkin gltfSkin;
@@ -280,18 +324,19 @@ private:
 	GltfAnimation gltfAnimation;
 	GltfScene gltfScene;
 
-	Map<std::string, GltfBuffer> allGltfBuffers;
-	Map<std::string, GltfBufferView> allGltfBufferViews;
-	Map<std::string, GltfAccessor> allGltfAccessors;
-	Map<std::string, GltfImage> allGltfImages;
-	Map<std::string, GltfSampler> allGltfSamplers;
-	Map<std::string, GltfTexture> allGltfTextures;
-	Map<std::string, GltfMaterial> allGltfMaterials;
-	Map<std::string, GltfMesh> allGltfMeshes;
-	Map<std::string, GltfSkin> allGltfSkins;
-	Map<std::string, GltfNode> allGltfNodes;
-	Map<std::string, GltfAnimation> allGltfAnimations;
-	Map<std::string, GltfScene> allGltfScenes;
+	Vector<GltfBuffer> allGltfBuffers;
+	Vector<GltfBufferView> allGltfBufferViews;
+	Vector<GltfSparse> allGltfSparses;
+	Vector<GltfAccessor> allGltfAccessors;
+	Vector<GltfImage> allGltfImages;
+	Vector<GltfSampler> allGltfSamplers;
+	Vector<GltfTexture> allGltfTextures;
+	Vector<GltfMaterial> allGltfMaterials;
+	Vector<GltfMesh> allGltfMeshes;
+	Vector<GltfSkin> allGltfSkins;
+	Vector<GltfNode> allGltfNodes;
+	Vector<GltfAnimation> allGltfAnimations;
+	Vector<GltfScene> allGltfScenes;
 	GltfScene* defaultScene;
 
 	void visitBuffer(JSONobject& jsonObject);
@@ -307,13 +352,16 @@ private:
 	void visitAnimation(JSONobject& jsonObject);
 	void visitScene(JSONobject& jsonObject);
 
+	void visitAccessorSparse(JSONobject& jsonObject);
+	void visitAccessorSparseIndex(JSONobject& jsonObject);
+	void visitAccessorSparseValue(JSONobject& jsonObject);
+	void visitMaterial_PbrMetallicRoughness(JSONobject& jsonObject);
 	void visitMaterial_Extensions(JSONobject& jsonObject);
-	void visitMaterial_Extensions_Pbr(JSONobject& jsonObject);
-	void visitMaterial_Extensions_Pbr_Values(JSONobject& jsonObject);
+	void visitMaterial_Extensions_PbrSpecularGlossiness(JSONobject& jsonObject);
+	void visitMaterial_TextureInfo(JSONobject& jsonObject);
 	void visitMesh_Primitive(JSONobject& jsonObject);
 	void visitMesh_Primitive_Attributes(JSONobject& jsonObject);
 	void visitAnimation_Sampler(JSONobject& jsonObject);
-	void visitAnimation_Sampler_Properties(JSONobject& jsonObject);
 	void visitAnimation_Channel(JSONobject& jsonObject);
 	void visitAnimation_Channel_Target(JSONobject& jsonObject);
 
@@ -351,29 +399,29 @@ public:
 
 	//
 
-	const Map<std::string, GltfBuffer>& getAllGltfBuffers() const;
+	const Vector<GltfBuffer>& getAllGltfBuffers() const;
 
-	const Map<std::string, GltfBufferView>& getAllGltfBufferViews() const;
+	const Vector<GltfBufferView>& getAllGltfBufferViews() const;
 
-	const Map<std::string, GltfAccessor>& getAllGltfAccessors() const;
+	const Vector<GltfAccessor>& getAllGltfAccessors() const;
 
-	const Map<std::string, GltfImage>& getAllGltfImages() const;
+	const Vector<GltfImage>& getAllGltfImages() const;
 
-	const Map<std::string, GltfSampler>& getAllGltfSamplers() const;
+	const Vector<GltfSampler>& getAllGltfSamplers() const;
 
-	const Map<std::string, GltfTexture>& getAllGltfTextures() const;
+	const Vector<GltfTexture>& getAllGltfTextures() const;
 
-	const Map<std::string, GltfMaterial>& getAllGltfMaterials() const;
+	const Vector<GltfMaterial>& getAllGltfMaterials() const;
 
-	const Map<std::string, GltfMesh>& getAllGltfMeshes() const;
+	const Vector<GltfMesh>& getAllGltfMeshes() const;
 
-	const Map<std::string, GltfSkin>& getAllGltfSkins() const;
+	const Vector<GltfSkin>& getAllGltfSkins() const;
 
-	const Map<std::string, GltfNode>& getAllGltfNodes() const;
+	const Vector<GltfNode>& getAllGltfNodes() const;
 
-	const Map<std::string, GltfAnimation>& getAllGltfAnimations() const;
+	const Vector<GltfAnimation>& getAllGltfAnimations() const;
 
-	const Map<std::string, GltfScene>& getAllGltfScenes() const;
+	const Vector<GltfScene>& getAllGltfScenes() const;
 
 	//
 

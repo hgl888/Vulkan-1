@@ -30,12 +30,12 @@ namespace vkts
 {
 
 BSDFMaterial::BSDFMaterial(const VkBool32 forwardRendering) :
-    IBSDFMaterial(), Material(forwardRendering, VK_FALSE, ""), fragmentShader(nullptr), attributes(VKTS_VERTEX_BUFFER_TYPE_VERTEX | VKTS_VERTEX_BUFFER_TYPE_NORMAL), allTextureObjects(), transparent(VK_FALSE)
+    IBSDFMaterial(), Material(forwardRendering, VK_FALSE, ""), fragmentShader(nullptr), attributes(VKTS_VERTEX_BUFFER_TYPE_VERTEX | VKTS_VERTEX_BUFFER_TYPE_NORMAL), allTextureObjects(), transparent(VK_FALSE), sorted(VK_FALSE), packed(VK_FALSE), alphaCutoff(0.0f), ambientOcclusionStrength(1.0f), specularGlossiness(VK_FALSE)
 {
 }
 
 BSDFMaterial::BSDFMaterial(const BSDFMaterial& other) :
-    IBSDFMaterial(), Material(other), fragmentShader(other.fragmentShader), attributes(other.attributes), allTextureObjects(), transparent(other.transparent)
+    IBSDFMaterial(), Material(other), fragmentShader(other.fragmentShader), attributes(other.attributes), allTextureObjects(), transparent(other.transparent), sorted(other.sorted), packed(other.packed), alphaCutoff(other.alphaCutoff), ambientOcclusionStrength(other.ambientOcclusionStrength), specularGlossiness(other.specularGlossiness)
 {
 	for (uint32_t i = 0; i < other.allTextureObjects.size(); i++)
 	{
@@ -145,6 +145,64 @@ VkBool32 BSDFMaterial::isTransparent() const
 void BSDFMaterial::setTransparent(const VkBool32 transparent)
 {
 	this->transparent = transparent;
+}
+
+VkBool32 BSDFMaterial::isSorted() const
+{
+	return sorted;
+}
+
+void BSDFMaterial::setSorted(const VkBool32 sorted)
+{
+	this->sorted = sorted;
+}
+
+VkBool32 BSDFMaterial::isPacked() const
+{
+	return packed;
+}
+
+void BSDFMaterial::setPacked(const VkBool32 packed)
+{
+	this->packed = packed;
+}
+
+float BSDFMaterial::getAlphaCutoff() const
+{
+	return alphaCutoff;
+}
+
+void BSDFMaterial::setAlphaCutoff(const float alphaCutoff)
+{
+	this->alphaCutoff = alphaCutoff;
+}
+
+float BSDFMaterial::getAmbientOcclusionStrength() const
+{
+	return ambientOcclusionStrength;
+}
+
+void BSDFMaterial::setAmbientOcclusionStrength(const float ambientOcclusionStrength)
+{
+	this->ambientOcclusionStrength = ambientOcclusionStrength;
+}
+
+VkBool32 BSDFMaterial::isSpecularGlossiness() const
+{
+	return specularGlossiness;
+}
+
+void BSDFMaterial::setSpecularGlossiness(const VkBool32 specularGlossiness)
+{
+	this->specularGlossiness = specularGlossiness;
+}
+
+void BSDFMaterial::updateParameterRecursive(Parameter* parameter)
+{
+	if (parameter)
+	{
+		parameter->visit(*this);
+	}
 }
 
 void BSDFMaterial::updateDescriptorSetsRecursive(const uint32_t allWriteDescriptorSetsCount, VkWriteDescriptorSet* allWriteDescriptorSets, const uint32_t currentBuffer, const std::string& nodeName)

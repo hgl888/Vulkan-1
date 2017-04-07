@@ -24,60 +24,26 @@
  * THE SOFTWARE.
  */
 
-#ifndef VKTS_TIMEPARAMETER_HPP_
-#define VKTS_TIMEPARAMETER_HPP_
+#ifndef VKTS_FN_BASE64_HPP_
+#define VKTS_FN_BASE64_HPP_
 
-#include <vkts/scenegraph/vkts_scenegraph.hpp>
+#include <vkts/core/vkts_core.hpp>
 
 namespace vkts
 {
 
-class TimeParameter : public Parameter
-{
+/**
+ *
+ * @ThreadSafe
+ */
+VKTS_APICALL std::vector<uint8_t> VKTS_APIENTRY base64Decode(const std::string& encoded);
 
-private:
+/**
+ *
+ * @ThreadSafe
+ */
+VKTS_APICALL std::string VKTS_APIENTRY base64Encode(const std::vector<uint8_t> data);
 
-	float currentTime;
+}
 
-public:
-
-	TimeParameter() :
-		Parameter(), currentTime(0.0f)
-    {
-    }
-
-	TimeParameter(const float currentTime) :
-		Parameter(), currentTime(currentTime)
-    {
-    }
-
-    virtual ~TimeParameter()
-    {
-    }
-
-    //
-
-	float getCurrentTime() const
-	{
-		return currentTime;
-	}
-
-	void setCurrentTime(const float currentTime)
-	{
-		this->currentTime = currentTime;
-	}
-
-    //
-
-    virtual void visit(INode& node) const
-    {
-    	for (uint32_t i = 0; i < node.getAnimations().size(); i++)
-    	{
-    		node.getAnimations()[i]->setCurrentTime(currentTime);
-    	}
-    }
-};
-
-} /* namespace vkts */
-
-#endif /* VKTS_TIMEPARAMETER_HPP_ */
+#endif /* VKTS_FN_BASE64_HPP_ */

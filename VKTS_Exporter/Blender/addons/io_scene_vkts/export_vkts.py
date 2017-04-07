@@ -179,7 +179,7 @@ def convertScaleNoAdjust(scale):
 
     return (scale[0], scale[1], scale[2])
 
-def saveTextures(context, filepath, imagesLibraryName, materials):
+def saveTextures(context, filepath, imagesLibraryName, materials, simplify):
 
     imagesLibraryFilepath = os.path.dirname(filepath) + "/" + imagesLibraryName
 
@@ -337,7 +337,71 @@ def saveTextures(context, filepath, imagesLibraryName, materials):
         fw("image %s\n" % (nameOfImage + "_image"))
         fw("\n")
 
+    if simplify:
+        textureName = "DefaultBaseColor"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+        textureName = "DefaultMetallic"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+        textureName = "DefaultRoughness"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+        textureName = "DefaultNormal"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+        textureName = "DefaultAmbientOcclusion"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+        textureName = "DefaultEmissive"
+        fw("#\n")
+        fw("# Texture.\n")
+        fw("#\n")
+        fw("\n")
+        fw("name %s\n" % (textureName))
+        fw("\n")
+        fw("image %s\n" % (textureName))
+        fw("\n")
+
+
     allEnvironmentTextures = []
+
+    allMirrorBallEnvironments = []
 
     for nameOfTexture in envTextures:
 
@@ -347,6 +411,10 @@ def saveTextures(context, filepath, imagesLibraryName, materials):
 
         if not nameOfImage in environmentImages:
             environmentImages.append(nameOfImage)
+
+            if texture.texture_coords == 'SPHERE' and not nameOfImage in allMirrorBallEnvironments:
+                allMirrorBallEnvironments.append(nameOfImage)
+            
 
         fw("#\n")
         fw("# Environment Texture.\n")
@@ -368,6 +436,10 @@ def saveTextures(context, filepath, imagesLibraryName, materials):
         
         if not nameOfImage in environmentImages:
             environmentImages.append(nameOfImage)
+
+            if node.projection == 'MIRROR_BALL' and not nameOfImage in allMirrorBallEnvironments:
+                allMirrorBallEnvironments.append(nameOfImage)
+
         if not nameOfImage in preFilteredImages:
             preFilteredImages.append(nameOfImage)
 
@@ -412,9 +484,82 @@ def saveTextures(context, filepath, imagesLibraryName, materials):
         else:
             if nameOfImage in environmentImages:
                 fw_image("environment true\n")
+
+                if nameOfImage in allMirrorBallEnvironments:
+                    fw_image("environment_type mirror_sphere\n")
+
             if nameOfImage in preFilteredImages:
                 fw_image("pre_filtered true\n")
         fw_image("image_data %s\n" % (nameOfImage + extension))
+        fw_image("\n")
+    
+    if simplify:
+        size = [1, 1]
+
+        typeName = "BaseColor"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
+        fw_image("\n")
+
+        typeName = "Metallic"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
+        fw_image("\n")
+
+        typeName = "Roughness"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
+        fw_image("\n")
+
+        typeName = "Normal"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
+        fw_image("\n")
+
+        typeName = "AmbientOcclusion"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
+        fw_image("\n")
+
+        typeName = "Emissive"
+        imageName = "Default" + typeName
+        fw_image("#\n")
+        fw_image("# Image.\n")
+        fw_image("#\n")
+        fw_image("\n")
+        fw_image("name %s\n" % (imageName))
+        fw_image("\n")
+        fw_image("image_data %s\n" % ("Default_" + typeName + ".tga"))
         fw_image("\n")
     
     file.close()
@@ -526,7 +671,7 @@ def replaceParameters(currentNode, openNodes, processedNodes, currentMain):
     return currentMain
 
 
-def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use_forward):
+def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use_forward, simplify):
     
     file = open(filepath, "w", encoding="utf8", newline="\n")
     fw = file.write
@@ -551,7 +696,7 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
     # Save textures.
 
     texturesLibraryFilepath = os.path.dirname(filepath) + "/" + texturesLibraryName
-    allEnvironmentTextures = saveTextures(context, texturesLibraryFilepath, imagesLibraryName, materials)
+    allEnvironmentTextures = saveTextures(context, texturesLibraryFilepath, imagesLibraryName, materials, simplify)
 
     # Write materials.
     for materialName in materials:
@@ -566,7 +711,6 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
         if material.use_nodes == True and context.scene.render.engine == 'CYCLES':
             
             useParallax = False 
-            normalMapUsed = False
             texCoordUsed = False
 
             parallaxObject = None
@@ -607,8 +751,6 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
             fw("shading BSDF %s\n" % friendlyBooleanName(use_forward))
             fw("\n")        
             fw("name %s\n" % friendlyName(materialName))
-            fw("\n")
-            fw("fragment_shader %s\n" % friendlyName(materialName + ".frag.spv"))
             fw("\n")
             
             #
@@ -658,6 +800,9 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
             processedNodes = []
             
             nodes = []
+
+            substancePainter = {}
+            doSimplify = simplify
 
             createOpenNodeList(openNodes, materialOutput)
             
@@ -719,10 +864,6 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
 
                         parallaxInputName = friendlyNodeName(currentNode.inputs[0].links[0].from_node.name) + "_" + friendlyNodeName(currentNode.inputs[0].links[0].from_socket.name)
 
-
-
-                        normalMapUsed = True
-                    
                         vertexAttributes = vertexAttributes | 0x00000010 | 0x00000004 | 0x00000008
 
                     currentMain = replaceParameters(currentNode, openNodes, processedNodes, currentMain)
@@ -1109,9 +1250,7 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
                     
                     #
                 
-                    normalMapUsed = True
-                    
-                    vertexAttributes = vertexAttributes | 0x00000004 | 0x00000008
+                    vertexAttributes = vertexAttributes | 0x00000010 | 0x00000004 | 0x00000008
 
                 elif isinstance(currentNode, bpy.types.ShaderNodeGamma):
                     # Gamma.
@@ -1278,6 +1417,29 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
                     if currentNode not in nodes:
                         nodes.append(currentNode)
 
+                        if doSimplify:
+                            #
+                            # Try to extract substance painter information.
+                            #
+
+                            checkFilename = os.path.splitext(bpy.path.basename(currentNode.image.filepath))[0]
+
+                            if checkFilename.lower().endswith("_basecolor") or checkFilename.lower().endswith("_base_color"):
+                                substancePainter['BASE_COLOR'] = currentNode
+                            elif checkFilename.lower().endswith("_metallic"):
+                                substancePainter['METALLIC'] = currentNode
+                            elif checkFilename.lower().endswith("_roughness"):
+                                substancePainter['ROUGHNESS'] = currentNode
+                            elif checkFilename.lower().endswith("_normal") or checkFilename.lower().endswith("_normal_opengl") or checkFilename.lower().endswith("_normal_directx"):
+                                substancePainter['NORMAL'] = currentNode
+                            elif checkFilename.lower().endswith("_ambientocclusion") or checkFilename.lower().endswith("_ambient_occlusion") or checkFilename.lower().endswith("_ao") or checkFilename.lower().endswith("_mixed_ao"):
+                                substancePainter['AMBIENT_OCCLUSION'] = currentNode
+                            elif checkFilename.lower().endswith("_emissive") or checkFilename.lower().endswith("_emission"):
+                                substancePainter['EMISSIVE'] = currentNode
+                            else:
+                                # If not all images can assigned, no simplifiaction possible.
+                                doSimplify = False
+
                     textureIndex = nodes.index(currentNode)
                         
                     # Inputs.
@@ -1317,7 +1479,7 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
 
                     texCoordUsed = True
                     
-                    vertexAttributes = vertexAttributes | 0x00000010
+                    vertexAttributes = vertexAttributes | 0x00000010 | 0x00000004 | 0x00000008
 
                 elif isinstance(currentNode, bpy.types.ShaderNodeFresnel):
                     # Fresnel.
@@ -1385,7 +1547,7 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
                     
                     texCoordUsed = True
                     
-                    vertexAttributes = vertexAttributes | 0x00000010
+                    vertexAttributes = vertexAttributes | 0x00000010 | 0x00000004 | 0x00000008
 
                 elif isinstance(currentNode, bpy.types.ShaderNodeValue):
                     # Value.
@@ -1412,20 +1574,84 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
                 if currentNode not in processedNodes:
                     processedNodes.append(currentNode)
 
-            if normalMapUsed:
+            if texCoordUsed:
                 currentFragmentGLSL = currentFragmentGLSL.replace("#nextTangents#", nextTangents)
                 currentFragmentGLSL = currentFragmentGLSL.replace("#nextAttribute#", normalMapAttribute)
-                
-            if texCoordUsed:
                 currentFragmentGLSL = currentFragmentGLSL.replace("#nextAttribute#", texCoordAttribute)
                 currentFragmentGLSL = currentFragmentGLSL.replace("#nextTexCoord#", nextTexCoord)
-            
-            for binding in range (0, len(nodes)):
-                currentTexImage = texImageFunction % ((binding + currentTextureOffset), binding)
-                currentFragmentGLSL = currentFragmentGLSL.replace("#nextTexture#", currentTexImage)
+
+            if doSimplify:
+
+                if use_forward:
+                    if texCoordUsed:
+                        fw("fragment_shader substance_forward.frag.spv\n")
+                    else:
+                        fw("fragment_shader substance_forward_no_texcoord.frag.spv\n")
+                    fw("\n")
+                else:
+                    if texCoordUsed:
+                        fw("fragment_shader substance_deferred.frag.spv\n")
+                    else:
+                        fw("fragment_shader substance_deferred_no_texcoord.frag.spv\n")
+                    fw("\n")
                 
-                fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(nodes[binding].name) + "_texture" ))    
+                if 'BASE_COLOR' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['BASE_COLOR'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultBaseColor\n")
+                    fw("\n")
+
+                if 'METALLIC' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['METALLIC'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultMetallic\n")
+                    fw("\n")
+
+                if 'ROUGHNESS' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['ROUGHNESS'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultRoughness\n")
+                    fw("\n")
+
+                if 'NORMAL' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['NORMAL'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultNormal\n")
+                    fw("\n")
+
+                if 'AMBIENT_OCCLUSION' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['AMBIENT_OCCLUSION'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultAmbientOcclusion\n")
+                    fw("\n")
+
+                if 'EMISSIVE' in substancePainter:
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(substancePainter['EMISSIVE'].name) + "_texture" ))
+                    fw("\n")
+                else:
+                    fw("add_texture DefaultEmissive\n")
+                    fw("\n")
+
+                fw("sorted true\n")
                 fw("\n")
+    
+            else:
+                doSimplify = False
+
+                fw("fragment_shader %s\n" % friendlyName(materialName + ".frag.spv"))
+                fw("\n")
+
+                for binding in range (0, len(nodes)):
+                    currentTexImage = texImageFunction % ((binding + currentTextureOffset), binding)
+                    currentFragmentGLSL = currentFragmentGLSL.replace("#nextTexture#", currentTexImage)
+                    
+                    fw("add_texture %s\n" % (friendlyName(material.name) + "_" + friendlyNodeName(nodes[binding].name) + "_texture" ))    
+                    fw("\n")
                 
             fw("attributes %x\n" % (vertexAttributes))
             fw("\n")
@@ -1442,13 +1668,14 @@ def saveMaterials(context, filepath, texturesLibraryName, imagesLibraryName, use
                                 
             #
 
-            fragmentShaderFilepath = os.path.dirname(filepath) + "/" + friendlyName(materialName) + ".frag"
-        
-            file_fragmentShader = open(fragmentShaderFilepath, "w", encoding="utf8", newline="\n")
+            if not doSimplify:
+                fragmentShaderFilepath = os.path.dirname(filepath) + "/" + friendlyName(materialName) + ".frag"
             
-            file_fragmentShader.write("%s\n" % currentFragmentGLSL)
-            
-            file_fragmentShader.close()
+                file_fragmentShader = open(fragmentShaderFilepath, "w", encoding="utf8", newline="\n")
+                
+                file_fragmentShader.write("%s\n" % currentFragmentGLSL)
+                
+                file_fragmentShader.close()
         
         else:
         
@@ -1662,7 +1889,9 @@ def saveCameras(context, filepath):
         fw("zfar %f\n" % (currentCamera.data.clip_end))
         fw("\n")
         if cameraType == 'Perspective':
-            aspect = context.scene.render.resolution_x / context.scene.render.resolution_y
+            aspect = float(context.scene.render.resolution_x) / float(context.scene.render.resolution_y)
+            if aspect < 1.0:
+                aspect = 1.0
             fw("fovy %f\n" % (math.degrees(currentCamera.data.angle) * 1.0 / aspect))
         else:
             fw("ortho_scale %f\n" % (currentCamera.data.ortho_scale))
@@ -2080,7 +2309,7 @@ def saveMeshes(context, filepath, materialsLibraryName, subMeshLibraryName):
 
     return
 
-def saveAnimation(context, fw, fw_animation, fw_channel, name, currentAnimation, filterName, isJoint):
+def saveAnimation(context, fw, fw_animation, fw_channel, name, currentAnimation, filterName, isJoint, isArmature):
 
     hasData = False
 
@@ -2242,12 +2471,12 @@ def saveBone(context, fw, fw_animation, fw_channel, currentPoseBone, armatureNam
     fw("\n")
     
     if animation_data is not None:
-        saveAnimation(context, fw, fw_animation, fw_channel, currentPoseBone.name, animation_data, currentPoseBone.name, True)
+        saveAnimation(context, fw, fw_animation, fw_channel, currentPoseBone.name, animation_data, currentPoseBone.name, True, False)
     
     return
 
 def saveNode(context, fw, fw_animation, fw_channel, currentObject):
-    location, rotation, scale = currentObject.matrix_local.decompose()
+    location, rotation, scale = currentObject.matrix_basis.decompose()
 
     location = convertLocation(location)
     rotation = convertRotation(rotation.to_euler('XYZ'))
@@ -2335,6 +2564,18 @@ def saveNode(context, fw, fw_animation, fw_channel, currentObject):
     fw("scale %f %f %f\n" % scale)
     fw("\n")
 
+    if parentName != "-":
+        location, rotation, scale = currentObject.matrix_parent_inverse.decompose()
+
+        location = convertLocation(location)
+        rotation = convertRotation(rotation.to_euler('XYZ'))
+        scale = convertScale(scale)
+
+        fw("bind_translate %f %f %f\n" % (location))
+        fw("bind_rotate %f %f %f\n" % (rotation))
+        fw("bind_scale %f %f %f\n" % (scale))
+        fw("\n")
+
     if currentObject.type == 'MESH':
         fw("mesh %s\n" % friendlyName(currentObject.data.name))
         fw("\n")
@@ -2350,8 +2591,8 @@ def saveNode(context, fw, fw_animation, fw_channel, currentObject):
             fw("\n")
 
     if currentObject.animation_data is not None:
-        isJoint = currentObject.type == 'ARMATURE'
-        saveAnimation(context, fw, fw_animation, fw_channel, currentObject.name, currentObject.animation_data, None, isJoint)
+        isArmature = currentObject.type == 'ARMATURE'
+        saveAnimation(context, fw, fw_animation, fw_channel, currentObject.name, currentObject.animation_data, None, False, isArmature)
 
     if currentObject.type == 'ARMATURE':
         fw("joints %d\n" % len(currentObject.pose.bones.values()))
@@ -2467,7 +2708,8 @@ def saveObjects(context, filepath, meshLibraryName, animationLibraryName, channe
 def save(operator,
          context,
          filepath="",
-         use_forward=False
+         use_forward=False,
+         simplify=False
          ):
 
     # Mute all constraints.
@@ -2504,7 +2746,7 @@ def save(operator,
 
     materialsLibraryFilepath = os.path.dirname(sceneFilepath) + "/" + materialsLibraryName
 
-    allEnvironmentTextures = saveMaterials(context, materialsLibraryFilepath, texturesLibraryName, imagesLibraryName, use_forward)
+    allEnvironmentTextures = saveMaterials(context, materialsLibraryFilepath, texturesLibraryName, imagesLibraryName, use_forward, simplify)
 
     #
 

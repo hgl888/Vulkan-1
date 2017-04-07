@@ -126,6 +126,12 @@ VKTS_APICALL VkBool32 VKTS_APIENTRY imageDataSave(const char* filename, const II
  *
  * @ThreadSafe
  */
+VKTS_APICALL IImageDataSP VKTS_APIENTRY imageDataCreate(const std::string& name, const std::string& extension, const IBinaryBufferSP& buffer);
+
+/**
+ *
+ * @ThreadSafe
+ */
 VKTS_APICALL IImageDataSP VKTS_APIENTRY imageDataCreate(const std::string& name, const uint32_t width, const uint32_t height, const uint32_t depth, const VkImageType imageType, const VkFormat& format);
 
 /**
@@ -139,6 +145,12 @@ VKTS_APICALL IImageDataSP VKTS_APIENTRY imageDataCreate(const std::string& name,
  * @ThreadSafe
  */
 VKTS_APICALL IImageDataSP VKTS_APIENTRY imageDataCreate(const std::string& name, const uint32_t width, const uint32_t height, const uint32_t depth, const float red, const float green, const float blue, const float alpha, const VkImageType imageType, const VkFormat& format);
+
+/**
+ *
+ * @ThreadSafe
+ */
+VKTS_APICALL IImageDataSP VKTS_APIENTRY imageDataUnite(const IImageDataSP& sourceImage0, const IImageDataSP& sourceImage1, const std::string& name, const VkTsImageDataChannels red, const VkTsImageDataChannels green, const VkTsImageDataChannels blue, const VkTsImageDataChannels alpha, const VkFormat format);
 
 /**
  *
@@ -168,7 +180,7 @@ VKTS_APICALL SmartPointerVector<IImageDataSP> VKTS_APIENTRY imageDataMipmap(cons
  *
  * @ThreadSafe
  */
-VKTS_APICALL SmartPointerVector<IImageDataSP> VKTS_APIENTRY imageDataCubemap(const IImageDataSP& sourceImage, const uint32_t length, const std::string& name);
+VKTS_APICALL SmartPointerVector<IImageDataSP> VKTS_APIENTRY imageDataCubemap(const IImageDataSP& sourceImage, const uint32_t length, const std::string& name, const enum VkTsEnvironmentType environmentType = VKTS_ENVIRONMENT_PANORAMA);
 
 /**
  *

@@ -55,37 +55,37 @@ public:
 
     //
 
-    virtual void visit(IScene& scene) const
+    virtual void visit(IScene& scene)
     {
     	// Do nothing.
     }
 
-    virtual void visit(IObject& object) const
+    virtual void visit(IObject& object)
     {
     	// Do nothing.
     }
 
-    virtual void visit(INode& node) const
+    virtual void visit(INode& node)
     {
     	// Do nothing.
     }
 
-    virtual void visit(IMesh& mesh) const
+    virtual void visit(IMesh& mesh)
     {
     	// Do nothing.
     }
 
-    virtual void visit(ISubMesh& subMesh) const
+    virtual void visit(ISubMesh& subMesh)
     {
     	// Do nothing.
     }
 
-    virtual void visit(IPhongMaterial& material) const
+    virtual void visit(IPhongMaterial& material)
     {
     	// Do nothing.
     }
 
-    virtual void visit(IBSDFMaterial& material) const
+    virtual void visit(IBSDFMaterial& material)
     {
     	// Do nothing.
     }

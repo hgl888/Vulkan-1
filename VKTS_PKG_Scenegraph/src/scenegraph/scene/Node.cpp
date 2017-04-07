@@ -57,6 +57,7 @@ void Node::reset()
     bindRotate = glm::vec3(0.0f, 0.0f, 0.0f);
     bindScale = glm::vec3(1.0f, 1.0f, 1.0f);
 
+    correctionMatrix = glm::mat4(1.0f);
     bindMatrix = glm::mat4(1.0f);
     inverseBindMatrix = glm::mat4(1.0f);
 
@@ -100,14 +101,14 @@ void Node::reset()
 }
 
 Node::Node() :
-    INode(), name(""), parentNode(), translate(0.0f, 0.0f, 0.0f), nodeRotationMode(VKTS_EULER_XZY), rotate(0.0f, 0.0f, 0.0f), scale(1.0f, 1.0f, 1.0f), finalTranslate(0.0f, 0.0f, 0.0f), finalRotate(0.0f, 0.0f, 0.0f), finalScale(1.0f, 1.0f, 1.0f), transformMatrix(1.0f), transformMatrixDirty(), jointIndex(-1), joints(0), bindTranslate(0.0f, 0.0f, 0.0f), bindRotationMode(VKTS_EULER_XYZ), bindRotate(0.0f, 0.0f,0.0f), bindScale(1.0f, 1.0f, 1.0f), bindMatrix(1.0f), inverseBindMatrix(1.0f), bindMatrixDirty(), allChildNodes(), allMeshes(), allCameras(), allLights(), allConstraints(), allAnimations(), currentAnimation(-1), allParticleSystems(), allParticleSystemSeeds(), transformUniformBuffer(), jointsUniformBuffer(), box(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)), layers(0x01), nodeData()
+    INode(), name(""), parentNode(), translate(0.0f, 0.0f, 0.0f), nodeRotationMode(VKTS_EULER_XZY), rotate(0.0f, 0.0f, 0.0f), scale(1.0f, 1.0f, 1.0f), finalTranslate(0.0f, 0.0f, 0.0f), finalRotate(0.0f, 0.0f, 0.0f), finalScale(1.0f, 1.0f, 1.0f), transformMatrix(1.0f), transformMatrixDirty(), jointIndex(-1), joints(0), bindTranslate(0.0f, 0.0f, 0.0f), bindRotationMode(VKTS_EULER_XYZ), bindRotate(0.0f, 0.0f,0.0f), bindScale(1.0f, 1.0f, 1.0f), correctionMatrix(1.0f), bindMatrix(1.0f), inverseBindMatrix(1.0f), bindMatrixDirty(), allChildNodes(), allMeshes(), allCameras(), allLights(), allConstraints(), allAnimations(), currentAnimation(-1), allParticleSystems(), allParticleSystemSeeds(), transformUniformBuffer(), jointsUniformBuffer(), box(glm::vec4(0.0f, 0.0f, 0.0f, 1.0f), glm::vec4(0.0f, 0.0f, 0.0f, 1.0f)), layers(0x01), nodeData()
 
 {
     reset();
 }
 
 Node::Node(const Node& other) :
-    INode(), name(other.name + "_clone"), parentNode(other.parentNode), translate(other.translate), nodeRotationMode(other.nodeRotationMode), rotate(other.rotate), scale(other.scale), finalTranslate(other.finalTranslate), finalRotate(other.finalRotate), finalScale(other.finalScale), transformMatrix(other.transformMatrix), transformMatrixDirty(other.transformMatrixDirty), jointIndex(-1), joints(0), bindTranslate(other.bindTranslate), bindRotationMode(other.bindRotationMode), bindRotate(other.bindRotate), bindScale(other.bindScale), bindMatrix(other.bindMatrix), inverseBindMatrix(other.inverseBindMatrix), bindMatrixDirty(other.bindMatrixDirty), box(other.box), layers(other.layers), nodeData()
+    INode(), name(other.name + "_clone"), parentNode(other.parentNode), translate(other.translate), nodeRotationMode(other.nodeRotationMode), rotate(other.rotate), scale(other.scale), finalTranslate(other.finalTranslate), finalRotate(other.finalRotate), finalScale(other.finalScale), transformMatrix(other.transformMatrix), transformMatrixDirty(other.transformMatrixDirty), jointIndex(-1), joints(0), bindTranslate(other.bindTranslate), bindRotationMode(other.bindRotationMode), bindRotate(other.bindRotate), bindScale(other.bindScale), correctionMatrix(other.correctionMatrix), bindMatrix(other.bindMatrix), inverseBindMatrix(other.inverseBindMatrix), bindMatrixDirty(other.bindMatrixDirty), box(other.box), layers(other.layers), nodeData()
 {
     for (uint32_t i = 0; i < other.nodeData.size(); i++)
     {
@@ -912,7 +913,7 @@ INodeSP Node::findNodeRecursiveFromRoot(const std::string& searchName)
 	return findNodeRecursive(searchName);
 }
 
-void Node::updateParameterRecursive(const Parameter* parameter)
+void Node::updateParameterRecursive(Parameter* parameter)
 {
 	if (parameter)
 	{
@@ -957,8 +958,21 @@ void Node::updateDescriptorSetsRecursive(const uint32_t allWriteDescriptorSetsCo
 	}
 }
 
-void Node::updateTransformRecursive(const double deltaTime, const uint64_t deltaTicks, const double tickTime, const uint32_t currentBuffer, const glm::mat4& parentTransformMatrix, const VkBool32 parentTransformMatrixDirty, const glm::mat4& parentBindMatrix, const VkBool32 parentBindMatrixDirty, const INodeSP& armatureNode)
+void Node::updateTransformRecursive(const double deltaTime, const uint64_t deltaTicks, const double tickTime, const uint32_t currentBuffer, const glm::mat4& parentTransformMatrix, const VkBool32 parentTransformMatrixDirty, const glm::mat4& parentBindMatrix, const VkBool32 parentBindMatrixDirty, const INodeSP& armatureNode, const OverwriteUpdate* updateOverwrite)
 {
+    const OverwriteUpdate* currentOverwrite = updateOverwrite;
+    while (currentOverwrite)
+    {
+    	if (!currentOverwrite->visit(*this, deltaTime, deltaTicks, tickTime, currentBuffer, parentTransformMatrix, parentTransformMatrixDirty, parentBindMatrix, parentBindMatrixDirty, armatureNode.get()))
+    	{
+    		return;
+    	}
+
+    	currentOverwrite = currentOverwrite->getNextOverwrite();
+    }
+
+	//
+
 	if (transformMatrixDirty.size() != bindMatrixDirty.size() || currentBuffer >= (uint32_t)transformMatrixDirty.size())
 	{
 		transformMatrixDirty.resize(currentBuffer + 1);
@@ -990,59 +1004,92 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
 
         //
 
-        Quat quaternion;
+        Quat a;
+        Quat b;
+        float t;
         VkBool32 quaternionDirty = VK_FALSE;
 
         //
 
         for (uint32_t i = 0; i < currentChannels.size(); i++)
         {
-        	float value = interpolate(currentTime, currentChannels[i]);
+        	if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_QUATERNION_ROTATE)
+        	{
+        		quaternionDirty = VK_TRUE;
 
-            if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_TRANSLATE)
-            {
-                finalTranslate[currentChannels[i]->getTargetTransformElement()] = value;
-            }
-            else if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_ROTATE)
-            {
-            	finalRotate[currentChannels[i]->getTargetTransformElement()] = value;
-            }
-            else if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_QUATERNION_ROTATE)
-            {
-            	quaternion[currentChannels[i]->getTargetTransformElement()] = value;
+        	    if (currentChannels[i]->getNumberEntries() == 0)
+        	    {
+        	        // Do nothing.
+        	    }
+        	    else if (currentChannels[i]->getNumberEntries() == 1 || currentTime <= currentChannels[i]->getKeys()[0])
+        	    {
+        	        a[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[0];
+        	        b[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[0];
+        	    }
+        	    else
+        	    {
+            	    auto lastIndex = currentChannels[i]->getNumberEntries() - 1;
 
-            	quaternionDirty = VK_TRUE;
-            }
-            else if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_SCALE)
-            {
-            	finalScale[currentChannels[i]->getTargetTransformElement()] = value;
-            }
+            	    if (currentTime >= currentChannels[i]->getKeys()[lastIndex])
+            	    {
+            	    	a[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[lastIndex];
+            	    	b[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[lastIndex];
+            	    }
+            	    else
+            	    {
+            	        uint32_t currentIndex = 0;
+            	        while (currentIndex < currentChannels[i]->getNumberEntries())
+            	        {
+            	            if (currentTime < currentChannels[i]->getKeys()[currentIndex])
+            	            {
+            	            	currentIndex--;
+
+            	                break;
+            	            }
+
+            	            currentIndex++;
+            	        }
+
+            	        t = (currentTime - currentChannels[i]->getKeys()[currentIndex]) / (currentChannels[i]->getKeys()[currentIndex + 1] - currentChannels[i]->getKeys()[currentIndex]);
+
+            	    	a[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[currentIndex];
+            	    	b[currentChannels[i]->getTargetTransformElement()] = currentChannels[i]->getValues()[currentIndex + 1];
+            	    }
+        	    }
+        	}
+        	else
+        	{
+				float value = interpolate(currentTime, currentChannels[i]);
+
+				if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_TRANSLATE)
+				{
+					finalTranslate[currentChannels[i]->getTargetTransformElement()] = value;
+				}
+				else if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_ROTATE)
+				{
+					finalRotate[currentChannels[i]->getTargetTransformElement()] = value;
+				}
+				else if (currentChannels[i]->getTargetTransform() == VKTS_TARGET_TRANSFORM_SCALE)
+				{
+					finalScale[currentChannels[i]->getTargetTransformElement()] = value;
+				}
+        	}
         }
 
         //
 
         if (quaternionDirty)
         {
-        	VkTsRotationMode currentRotationMode = VKTS_EULER_XZY;
+        	VkTsRotationMode currentRotationMode = nodeRotationMode;
 
-        	if (isNode())
+        	if (isArmature() || isJoint())
         	{
-        		// Processing node.
-
-        		currentRotationMode = nodeRotationMode;
-        	}
-        	else if (isArmature() || isJoint())
-        	{
-        		// Processing joint and armature.
+        		// Processing armature and joint.
 
         		currentRotationMode = bindRotationMode;
         	}
-        	else
-        	{
-            	logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Invalid combination: joints = %d jointIndex = %d", joints, jointIndex);
 
-            	return;
-        	}
+        	Quat quaternion = slerp(a, b, t);
 
         	switch (currentRotationMode)
         	{
@@ -1061,13 +1108,6 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
         //
 
         transformMatrixDirty[currentBuffer] = VK_TRUE;
-
-        if (isArmature() || isJoint())
-        {
-        	// Processing joint and armature.
-
-        	bindMatrixDirty[currentBuffer] = VK_TRUE;
-        }
     }
 
     //
@@ -1085,92 +1125,82 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
         //
 
         transformMatrixDirty[currentBuffer] = VK_TRUE;
-
-        if (isArmature() || isJoint())
-        {
-        	// Processing joint and armature.
-
-        	bindMatrixDirty[currentBuffer] = VK_TRUE;
-        }
     }
 
     //
-    if (isArmature() || isJoint())
-    {
-		if (bindMatrixDirty[currentBuffer])
+
+	if (bindMatrixDirty[currentBuffer])
+	{
+		glm::mat4 currentRotation(1.0f);
+
+		if (isJoint())
 		{
-			// Processing joints and armature.
-
-			glm::mat4 localBindMatrix;
-
-			if (isJoint())
+			switch (bindRotationMode)
 			{
-				// Processing joints.
-
-				glm::mat4 currentRotation(1.0f);
-
-				switch (bindRotationMode)
-				{
-					case VKTS_EULER_YXZ:
-						currentRotation = rotateRzRxRyMat4(bindRotate.z, bindRotate.x, bindRotate.y);
-						break;
-					case VKTS_EULER_XYZ:
-						currentRotation = rotateRzRyRxMat4(bindRotate.z, bindRotate.y, bindRotate.x);
-						break;
-					case VKTS_EULER_XZY:
-						currentRotation = rotateRyRzRxMat4(bindRotate.y, bindRotate.z, bindRotate.x);
-						break;
-				}
-
-				localBindMatrix = translateMat4(bindTranslate.x, bindTranslate.y, bindTranslate.z) * currentRotation * scaleMat4(bindScale.x, bindScale.y, bindScale.z);
-			}
-			else if (isArmature())
-			{
-				// Processing armature.
-
-				glm::mat4 currentRotation(1.0f);
-
-				switch (bindRotationMode)
-				{
-					case VKTS_EULER_YXZ:
-						currentRotation = rotateRzRxRyMat4(finalRotate.z, finalRotate.x, finalRotate.y);
-						break;
-					case VKTS_EULER_XYZ:
-						currentRotation = rotateRzRyRxMat4(finalRotate.z, finalRotate.y, finalRotate.x);
-						break;
-					case VKTS_EULER_XZY:
-						currentRotation = rotateRyRzRxMat4(finalRotate.y, finalRotate.z, finalRotate.x);
-						break;
-				}
-
-				// Armature has no bind values, but transform is taken into account.
-
-				localBindMatrix = translateMat4(finalTranslate.x, finalTranslate.y, finalTranslate.z) * currentRotation * scaleMat4(finalScale.x, finalScale.y, finalScale.z);
-			}
-			else
-			{
-				logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Invalid combination: joints = %d jointIndex = %d", joints, jointIndex);
-
-				return;
+				case VKTS_EULER_YXZ:
+					currentRotation = rotateRzRxRyMat4(bindRotate.z, bindRotate.x, bindRotate.y);
+					break;
+				case VKTS_EULER_XYZ:
+					currentRotation = rotateRzRyRxMat4(bindRotate.z, bindRotate.y, bindRotate.x);
+					break;
+				case VKTS_EULER_XZY:
+					currentRotation = rotateRyRzRxMat4(bindRotate.y, bindRotate.z, bindRotate.x);
+					break;
 			}
 
-			this->bindMatrix = parentBindMatrix * localBindMatrix;
+			this->bindMatrix = parentBindMatrix * translateMat4(bindTranslate.x, bindTranslate.y, bindTranslate.z) * currentRotation * scaleMat4(bindScale.x, bindScale.y, bindScale.z);
 
 			this->inverseBindMatrix = glm::inverse(this->bindMatrix);
-
-			//
-
-			transformMatrixDirty[currentBuffer] = VK_TRUE;
 		}
+		else if (isArmature())
+		{
+			switch (bindRotationMode)
+			{
+				case VKTS_EULER_YXZ:
+					currentRotation = rotateRzRxRyMat4(finalRotate.z, finalRotate.x, finalRotate.y);
+					break;
+				case VKTS_EULER_XYZ:
+					currentRotation = rotateRzRyRxMat4(finalRotate.z, finalRotate.y, finalRotate.x);
+					break;
+				case VKTS_EULER_XZY:
+					currentRotation = rotateRyRzRxMat4(finalRotate.y, finalRotate.z, finalRotate.x);
+					break;
+			}
+
+			this->bindMatrix = parentBindMatrix * translateMat4(finalTranslate.x, finalTranslate.y, finalTranslate.z) * currentRotation * scaleMat4(finalScale.x, finalScale.y, finalScale.z);
+
+			this->inverseBindMatrix = glm::inverse(this->bindMatrix);
+		}
+		else if (isNode())
+		{
+			switch (nodeRotationMode)
+			{
+				case VKTS_EULER_YXZ:
+					currentRotation = rotateRzRxRyMat4(bindRotate.z, bindRotate.x, bindRotate.y);
+					break;
+				case VKTS_EULER_XYZ:
+					currentRotation = rotateRzRyRxMat4(bindRotate.z, bindRotate.y, bindRotate.x);
+					break;
+				case VKTS_EULER_XZY:
+					currentRotation = rotateRyRzRxMat4(bindRotate.y, bindRotate.z, bindRotate.x);
+					break;
+			}
+
+			this->correctionMatrix = translateMat4(bindTranslate.x, bindTranslate.y, bindTranslate.z) * currentRotation * scaleMat4(bindScale.x, bindScale.y, bindScale.z);
+		}
+
+		//
+
+		transformMatrixDirty[currentBuffer] = VK_TRUE;
 	}
 
-    //
+	//
 
     if (transformMatrixDirty[currentBuffer])
     {
         if (isNode() || isArmature())
         {
-        	// Processing node and armature.
+        	// Processing node
 
         	glm::mat4 currentRotation(1.0f);
 
@@ -1187,18 +1217,16 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
         			break;
         	}
 
-        	this->transformMatrix = translateMat4(finalTranslate.x, finalTranslate.y, finalTranslate.z) * currentRotation * scaleMat4(finalScale.x, finalScale.y, finalScale.z);
+        	this->transformMatrix = correctionMatrix * translateMat4(finalTranslate.x, finalTranslate.y, finalTranslate.z) * currentRotation * scaleMat4(finalScale.x, finalScale.y, finalScale.z);
 
         	if (isNode())
         	{
-        		// Processing node.
-
         		this->transformMatrix = parentTransformMatrix * this->transformMatrix;
         	}
         }
-        else if (isJoint())
+        else
         {
-        	// Processing joints.
+        	// Processing joints and armature.
 
         	glm::mat4 currentRotation(1.0f);
 
@@ -1222,12 +1250,6 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
         	{
         		this->transformMatrix = parentTransformMatrix * this->transformMatrix;
         	}
-        }
-        else
-        {
-        	logPrint(VKTS_LOG_ERROR, __FILE__, __LINE__, "Invalid combination: joints = %d jointIndex = %d", joints, jointIndex);
-
-        	return;
         }
 
         if (isNode() || isArmature())
@@ -1344,7 +1366,7 @@ void Node::updateTransformRecursive(const double deltaTime, const uint64_t delta
 
     for (uint32_t i = 0; i < allChildNodes.size(); i++)
     {
-        allChildNodes[i]->updateTransformRecursive(deltaTime, deltaTicks, tickTime, currentBuffer, this->transformMatrix, this->transformMatrixDirty[currentBuffer], this->bindMatrix, this->bindMatrixDirty[currentBuffer], newArmatureNode);
+        allChildNodes[i]->updateTransformRecursive(deltaTime, deltaTicks, tickTime, currentBuffer, this->transformMatrix, this->transformMatrixDirty[currentBuffer], this->bindMatrix, this->bindMatrixDirty[currentBuffer], newArmatureNode, updateOverwrite);
     }
 
     //

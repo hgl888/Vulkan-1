@@ -27,8 +27,7 @@
 #ifndef VKTS_SCENEGRAPH_HPP_
 #define VKTS_SCENEGRAPH_HPP_
 
-// TODO: Implement voxel global illumination in Example 12.
-// TODO: Implement glTF 1.1. loader plus PBR renderer with transparency in Example 13.
+// TODO: Implement voxel global illumination in Example 11.
 // TODO: Implement particle system renderer in Example 14.
 
 /**
@@ -49,6 +48,9 @@
 
 #define VKTS_CONVERT_BEZIER VK_TRUE
 #define VKTS_CONVERT_SAMPLING (1.0f/60.0f)
+
+#define VKTS_SHADER_DIRECTORY "shader/SPIR/V/"
+#define VKTS_TEXTURE_DIRECTORY "texture/"
 
 /**
  * Types.
@@ -91,10 +93,11 @@ typedef enum VkTsInterpolator_
 #include <vkts/scenegraph/parameter/Parameter.hpp>
 
 /**
- * Overwrite draw.
+ * Overwrite.
  */
 
 #include <vkts/scenegraph/overwrite/OverwriteDraw.hpp>
+#include <vkts/scenegraph/overwrite/OverwriteUpdate.hpp>
 
 /**
  * Scene.
@@ -163,7 +166,8 @@ typedef enum VkTsInterpolator_
  * Parameter setting.
  */
 
-#include <vkts/scenegraph/parameter/TimeParameter.hpp>
+#include <vkts/scenegraph/parameter/GltfParameter.hpp>
+#include <vkts/scenegraph/parameter/AnimationParameter.hpp>
 
 /**
  * Interpolator.
